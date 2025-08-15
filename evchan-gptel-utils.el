@@ -223,7 +223,8 @@ reapplying syntax highlight."
               :description "Get the content of a buffer"
               :args (list '( :name "buffer_name"
                              :type string
-                             :description "The buffer name to read"))))
+                             :description "The buffer name to read"))
+              :category "emacs"))
 
 (add-hook 'gptel-post-response-functions
           #'evchan-gptel-utils/reformat-granite-think)
