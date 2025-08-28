@@ -165,32 +165,6 @@ A valid executable `python3' must be found in the directories set in
       (funcall callback (format "%s is not live anymore"
                                 buffer-name)))))
 
-(defun evchan-gptel-utils/reformat-granite-think (beg end)
-  "Convert OpenAI API compatible reasoning block to HTML comment block.
-
-When a region from BEG to END has a reasoning block, convert the
-wrapping tags to HTML comment tags.  After converting, trigger
-reapplying syntax highlight."
-
-  (when (and gptel-mode
-             (and beg end))
-    (save-excursion
-      (let* ((contents (buffer-substring-no-properties beg end))
-             (start-tag (cond ((derived-mode-p 'markdown-mode) "<!--\n")
-                              ((derived-mode-p 'org-mode) "#+BEGIN_QUOTE\n")
-                              (t "\n")))
-             (end-tag (cond ((derived-mode-p 'markdown-mode) "\n--->\n")
-                            ((derived-mode-p 'org-mode) "\n#+END_QUOTE\n")
-                            (t "\n")))
-             (contents (string-replace "<think>" start-tag contents))
-             (contents (string-replace "</think>" end-tag contents))
-             (contents (string-replace "<response>" "\n" contents))
-             (contents (string-replace "</response>" "\n" contents)))
-        (delete-region beg end)
-        (goto-char beg)
-        (insert contents))
-      (pulse-momentary-highlight-region beg end))))
-
 (add-to-list 'gptel-tools
              (gptel-make-tool
               :name "read_url"
@@ -231,9 +205,6 @@ reapplying syntax highlight."
                              :type string
                              :description "The buffer name to read"))
               :category "emacs"))
-
-(add-hook 'gptel-post-response-functions
-          #'evchan-gptel-utils/reformat-granite-think)
 
 (provide 'evchan-gptel-utils)
 
