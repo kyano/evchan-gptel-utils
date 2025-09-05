@@ -165,6 +165,13 @@ A valid executable `python3' must be found in the directories set in
       (funcall callback (format "%s is not live anymore"
                                 buffer-name)))))
 
+(defun evchan-gptel-utils/now (callback)
+  "Return the date and time of now to CALLBACK."
+
+  (let ((timestring (format-time-string "%Y-%m-%dT%H:%M:%S%:z"
+                                        (current-time))))
+    (funcall callback timestring)))
+
 (add-to-list 'gptel-tools
              (gptel-make-tool
               :name "read_url"
@@ -205,6 +212,15 @@ A valid executable `python3' must be found in the directories set in
                              :type string
                              :description "The buffer name to read"))
               :category "emacs"))
+(add-to-list 'gptel-tools
+             (gptel-make-tool
+              :name "now"
+              :function #'evchan-gptel-utils/now
+              :async t
+              :description
+              (concat "Get the current date and time."
+                      " The format is `%Y-%m-%dT%H:%M:%S%:z`."
+                      " ex) \"2025-09-05T14:07:37+09:00\"")))
 
 (provide 'evchan-gptel-utils)
 
