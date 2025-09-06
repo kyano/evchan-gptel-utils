@@ -220,7 +220,9 @@ A valid executable `python3' must be found in the directories set in
               :description
               (concat "Get the current date and time."
                       " The format is `%Y-%m-%dT%H:%M:%S%:z`."
-                      " ex) \"2025-09-05T14:07:37+09:00\"")))
+                      " ex) \"2025-09-05T14:07:37+09:00\"")
+              :args '()
+              :category "time"))
 
 (provide 'evchan-gptel-utils)
 
