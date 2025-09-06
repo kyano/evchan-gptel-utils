@@ -168,7 +168,7 @@ A valid executable `python3' must be found in the directories set in
 (defun evchan-gptel-utils/now (callback)
   "Return the date and time of now to CALLBACK."
 
-  (let ((timestring (format-time-string "%Y-%m-%dT%H:%M:%S%:z"
+  (let ((timestring (format-time-string "%F(%a) %T%:z"
                                         (current-time))))
     (funcall callback timestring)))
 
