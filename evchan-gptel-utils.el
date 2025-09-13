@@ -31,6 +31,11 @@
 
 (require 'gptel)
 
+(defconst evchan-gptel-utils/user-agent
+  (format "Emacs/%s (%s) gptel"
+          emacs-version
+          system-configuration))
+
 (defun evchan-gptel-utils/read-url (callback url)
   "Read the content of a URL and pass it to CALLBACK.
 
@@ -42,54 +47,55 @@ If the mime-type of URL is `application/pdf', it will converted by the
 external program `pdftotext'.  If `pdftotext' is not found, an error
 message is passed to CALLBACK."
 
-  (let ((url-user-agent (format "Emacs/%s (%s) gptel"
-                                emacs-version
-                                system-configuration))
+  (let ((url-user-agent evchan-gptel-utils/user-agent)
         (url-request-method "GET"))
     (defvar url-http-end-of-headers)
     (condition-case error
-        (url-retrieve url (lambda (status)
-                            (if (plist-member status 'error)
-                                (funcall callback (format "An error occurred: %s"
-                                                          (plist-get status 'error)))
-                              (let ((headers (buffer-substring-no-properties
-                                              (point-min)
-                                              (marker-position url-http-end-of-headers)))
-                                    (found-content-type nil)
-                                    (mime-type nil)
-                                    dom
-                                    plain-text)
-                                (catch 'break-loop
-                                  (dolist
-                                      (elem (split-string headers))
-                                    (when found-content-type
-                                      (setq mime-type elem)
-                                      (throw 'break-loop t))
-                                    (when (eq (compare-strings
-                                               elem nil nil
-                                               "content-type:" nil nil
-                                               t) t)
-                                      (setq found-content-type t))))
-                                (if (string= mime-type "application/pdf")
-                                    (let ((temp-file (make-temp-file "gptel-tool-read-url"))
-                                          text-content)
-                                      (write-region (marker-position url-http-end-of-headers)
-                                                    (point-max)
-                                                    temp-file)
-                                      (with-temp-buffer
-                                        (call-process "pdftotext" nil t nil "-q" temp-file "-")
-                                        (setq text-content (buffer-string)))
-                                      (funcall callback text-content))
-                                  (progn
-                                    (setq dom (libxml-parse-html-region
-                                               (marker-position url-http-end-of-headers)
-                                               (point-max)))
-                                    (with-temp-buffer
-                                      (shr-insert-document dom)
-                                      (setq plain-text (buffer-substring-no-properties
-                                                        (point-min)
-                                                        (point-max))))
-                                    (funcall callback plain-text)))))) nil t nil)
+        (url-retrieve
+         url
+         (lambda (status)
+           (if (plist-member status 'error)
+               (funcall callback (format "An error occurred: %s"
+                                         (plist-get status 'error)))
+             (let ((headers (buffer-substring-no-properties
+                             (point-min)
+                             (marker-position url-http-end-of-headers)))
+                   (found-content-type nil)
+                   (mime-type nil)
+                   dom
+                   plain-text)
+               (catch 'break-loop
+                 (dolist
+                     (elem (split-string headers))
+                   (when found-content-type
+                     (setq mime-type elem)
+                     (throw 'break-loop t))
+                   (when (eq (compare-strings
+                              elem nil nil
+                              "content-type:" nil nil
+                              t) t)
+                     (setq found-content-type t))))
+               (if (string= mime-type "application/pdf")
+                   (let ((temp-file (make-temp-file "gptel-tool-read-url"))
+                         text-content)
+                     (write-region (marker-position url-http-end-of-headers)
+                                   (point-max)
+                                   temp-file)
+                     (with-temp-buffer
+                       (call-process "pdftotext" nil t nil "-q" temp-file "-")
+                       (setq text-content (buffer-string)))
+                     (funcall callback text-content))
+                 (progn
+                   (setq dom (libxml-parse-html-region
+                              (marker-position url-http-end-of-headers)
+                              (point-max)))
+                   (with-temp-buffer
+                     (shr-insert-document dom)
+                     (setq plain-text (buffer-substring-no-properties
+                                       (point-min)
+                                       (point-max))))
+                   (funcall callback plain-text))))))
+         nil t nil)
       (t (funcall callback (format "An error occurred: %s"
                                    (error-message-string error)))))))
 
@@ -172,6 +178,123 @@ A valid executable `python3' must be found in the directories set in
                                         (current-time))))
     (funcall callback timestring)))
 
+(defvar evchan-gptel-utils/wikipedia-token-expires-at 0)
+(defvar evchan-gptel-utils/wikipedia-access-token)
+
+(defun evchan-gptel-utils/wikipedia-refresh-token (callback)
+  "Refresh the access token for Wikipedia and proceed CALLBACK."
+
+  (let ((now (string-to-number (format-time-string "%s" (current-time)))))
+    (if (> now evchan-gptel-utils/wikipedia-token-expires-at)
+        (let* ((url-user-agent evchan-gptel-utils/user-agent)
+               (token-url "https://meta.wikimedia.org/w/rest.php/oauth2/access_token")
+               (client-id (plist-get (car (auth-source-search
+                                           :host "wikimedia.org"))
+                                     :user))
+               (client-secret (auth-info-password
+                               (car (auth-source-search
+                                     :host "wikimedia.org"))))
+               (url-request-method "POST")
+               (url-request-extra-headers '(("Content-Type" . "application/x-www-form-urlencoded")))
+               (url-request-data (concat "grant_type=client_credentials"
+                                         (format "&client_id=%s"
+                                                 (url-hexify-string client-id))
+                                         (format "&client_secret=%s"
+                                                 (url-hexify-string client-secret)))))
+          (defvar url-http-end-of-headers)
+          (condition-case error
+              (url-retrieve
+               token-url
+               (lambda (status)
+                 (if (plist-member status 'error)
+                     (funcall callback (format "An error occurred: %s"
+                                               (plist-get status 'error)))
+                   (let* ((response (json-read-from-string
+                                     (buffer-substring-no-properties (marker-position url-http-end-of-headers)
+                                                                     (point-max))))
+                          (token-type (cdr (assoc 'token_type response)))
+                          (expires-in (cdr (assoc 'expires_in response)))
+                          (access-token (cdr (assoc 'access_token response))))
+                     (setq evchan-gptel-utils/wikipedia-token-expires-at
+                           (+ now (truncate (* expires-in 0.75))))
+                     (setq evchan-gptel-utils/wikipedia-access-token
+                           (concat token-type " " access-token))
+                     (funcall callback nil))))
+               nil t nil)
+            (t (funcall callback (format "An error occurred: %s"
+                                         (error-message-string error))))))
+      (funcall callback nil))))
+
+(defun evchan-gptel-utils/search-wikipedia (callback keyword)
+  "Search Wikipedia documents with titles containing KEYWORD.
+
+After searching, pass them to CALLBACK in JSON format."
+
+  (evchan-gptel-utils/wikipedia-refresh-token
+   #'(lambda (err)
+       (if err
+           (funcall callback err)
+         (let* ((url-user-agent evchan-gptel-utils/user-agent)
+                (search-url "https://api.wikimedia.org/core/v1/wikipedia/en/search/title")
+                (url-request-method "GET")
+                (search-term (format "q=%s" (url-hexify-string keyword)))
+                (limit "limit=5"))
+           (defvar url-http-end-of-headers)
+           (condition-case error
+               (url-retrieve
+                (format "%s?%s&%s" search-url search-term limit)
+                (lambda (status)
+                  (if (plist-member status 'error)
+                      (funcall callback (format "An error occurred: %s"
+                                                (plist-get status 'error)))
+                    (let* ((response (json-read-from-string
+                                      (buffer-substring-no-properties (marker-position url-http-end-of-headers)
+                                                                      (point-max))))
+                           (pages (cdr (assoc 'pages response)))
+                           page-list)
+                      (setq page-list
+                            (mapcar
+                             (lambda (page)
+                               (let ((key (cdr (assoc 'key page)))
+                                     (title (cdr (assoc 'title page)))
+                                     (description (cdr (assoc 'description page))))
+                                 `(,title . ((title . ,key)
+                                             (description . ,description)))))
+                             pages))
+                      (funcall callback (json-encode page-list))))) nil t nil)
+             (t (funcall callback (format "An error occurred: %s"
+                                          (error-message-string error))))))))))
+
+(defun evchan-gptel-utils/fetch-wikipedia (callback key)
+  "Fetch a document titled KEY from Wikipedia and pass it to CALLBACK."
+
+  (evchan-gptel-utils/wikipedia-refresh-token
+   #'(lambda (err)
+       (if err
+           (funcall callback err)
+         (let* ((url-user-agent evchan-gptel-utils/user-agent)
+                (fetch-url (format "https://api.wikimedia.org/core/v1/wikipedia/en/page/%s"
+                                   key))
+                (url-request-method "GET"))
+           (defvar url-http-end-of-headers)
+           (condition-case error
+               (url-retrieve
+                fetch-url
+                (lambda (status)
+                  (if (plist-member status 'error)
+                      (funcall callback (format "An error occurred: %s"
+                                                (plist-get status 'error)))
+                    (let* ((response (json-read-from-string
+                                      (buffer-substring-no-properties (marker-position url-http-end-of-headers)
+                                                                      (point-max))))
+                           (wiki-source (cdr (assoc 'source response))))
+                      (funcall callback (json-encode
+                                         `((title . ,key)
+                                           (document . ,wiki-source)))))))
+                nil t nil)
+             (t (funcall callback (format "An error occurred: %s"
+                                          (error-message-string error))))))))))
+
 (add-to-list 'gptel-tools
              (gptel-make-tool
               :name "read_url"
@@ -223,6 +346,28 @@ A valid executable `python3' must be found in the directories set in
                       " ex) \"2025-09-05T14:07:37+09:00\"")
               :args '()
               :category "time"))
+(add-to-list 'gptel-tools
+             (gptel-make-tool
+              :name "search_wikipedia"
+              :function #'evchan-gptel-utils/search-wikipedia
+              :async t
+              :description "Search Wikipedia documents with titles containing `keyword`"
+              :args (list '( :name "keyword"
+                             :type string
+                             :description "A keyword to search"))
+              :category "wikipedia"))
+(add-to-list 'gptel-tools
+             (gptel-make-tool
+              :name "fetch_wikipedia"
+              :function #'evchan-gptel-utils/fetch-wikipedia
+              :async t
+              :description "Fetch a Wikipedia document with the `title`, in MediaWiki format"
+              :args (list `( :name "title"
+                             :type string
+                             :description
+                             ,(concat "A title of document to fetch."
+                                      " The title can be retrieved from `search_wikipedia`")))
+              :category "wikipedia"))
 
 (defun evchan-gptel-utils/hunyuan-mt-prompt ()
   "Generate a prompt template for `Hunyuan-MT'."
