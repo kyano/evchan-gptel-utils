@@ -369,26 +369,6 @@ After searching, pass them to CALLBACK in JSON format."
                                       " The title can be retrieved from `search_wikipedia`")))
               :category "wikipedia"))
 
-(defun evchan-gptel-utils/hunyuan-mt-prompt ()
-  "Generate a prompt template for `Hunyuan-MT'."
-
-  (interactive)
-  (let* ((lang-candidates '("Chinese" "English" "French" "Portuguese" "Spanish"
-                            "Japanese" "Turkish" "Russian" "Arabic" "Korean" "Thai"
-                            "Italian" "German" "Vietnamese" "Malay" "Indonesian"
-                            "Filipino" "Hindi" "Traditional Chinese" "Polish" "Czech"
-                            "Dutch" "Khmer" "Burmese" "Persian" "Gujarati" "Urdu"
-                            "Telugu" "Marathi" "Hebrew" "Bengali" "Tamil" "Ukrainian"
-                            "Tibetan" "Kazakh" "Mongolian" "Uyghur" "Cantonese"))
-         (target-lang (completing-read "Choose a target language: " lang-candidates nil t))
-         (prompt-string (format "Translate the following segment into %s, without additional explanation.\n\n"
-                                target-lang)))
-    (insert prompt-string)))
-
-(define-key gptel-mode-map
-            (kbd "C-c <f12> t")
-            #'evchan-gptel-utils/hunyuan-mt-prompt)
-
 (provide 'evchan-gptel-utils)
 
 ;; Local Variables:
