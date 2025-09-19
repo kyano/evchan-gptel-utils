@@ -342,8 +342,8 @@ After searching, pass them to CALLBACK in JSON format."
               :async t
               :description
               (concat "Get the current date and time."
-                      " The format is `%Y-%m-%dT%H:%M:%S%:z`."
-                      " ex) \"2025-09-05T14:07:37+09:00\"")
+                      " The format is `YEAR-MONTH-DAY(WEEKDAY) HOUR:MINUTE:SECOND+TIMEZONE'."
+                      " ex) \"2025-09-05(금) 14:07:37+09:00\"")
               :args '()
               :category "time"))
 (add-to-list 'gptel-tools
