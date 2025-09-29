@@ -330,7 +330,7 @@ After searching, pass them to CALLBACK in JSON format."
               :name "read_buffer"
               :function #'evchan-gptel-utils/read-buffer
               :async t
-              :description "Get the content of a buffer"
+              :description "Get the content of an Emacs buffer"
               :args (list '( :name "buffer_name"
                              :type string
                              :description "The buffer name to read"))
@@ -351,7 +351,9 @@ After searching, pass them to CALLBACK in JSON format."
               :name "search_wikipedia"
               :function #'evchan-gptel-utils/search-wikipedia
               :async t
-              :description "Search Wikipedia documents with titles containing `keyword`"
+              :description
+              (concat "Search Wikipedia documents which a title contains `keyword`."
+                      " To fetch the actual article, use `fetch_wikipedia`.")
               :args (list '( :name "keyword"
                              :type string
                              :description "A keyword to search"))
@@ -361,7 +363,9 @@ After searching, pass them to CALLBACK in JSON format."
               :name "fetch_wikipedia"
               :function #'evchan-gptel-utils/fetch-wikipedia
               :async t
-              :description "Fetch a Wikipedia document with the `title`, in MediaWiki format"
+              :description
+              (concat "Fetch a Wikipedia document with the `title`, in MediaWiki format."
+                      " To get the title of an article, use `search_wikipedia`.")
               :args (list `( :name "title"
                              :type string
                              :description
