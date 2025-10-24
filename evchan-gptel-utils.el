@@ -238,7 +238,7 @@ After searching, pass them to CALLBACK in JSON format."
                 (search-url "https://api.wikimedia.org/core/v1/wikipedia/en/search/title")
                 (url-request-method "GET")
                 (search-term (format "q=%s" (url-hexify-string keyword)))
-                (limit "limit=5"))
+                (limit "limit=15"))
            (defvar url-http-end-of-headers)
            (condition-case error
                (url-retrieve
