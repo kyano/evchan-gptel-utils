@@ -295,6 +295,34 @@ After searching, pass them to CALLBACK in JSON format."
              (t (funcall callback (format "An error occurred: %s"
                                           (error-message-string error))))))))))
 
+(defvar evchan-gptel-utils/gcloud-token-expires-at 0)
+(defvar evchan-gptel-utils/gcloud-access-token)
+
+(defun evchan-gptel-utils/gcloud-refresh-token (callback)
+  "Refresh the access token for GCloud API and proceed CALLBACK."
+
+  (let ((now (string-to-number (format-time-string "%s" (current-time)))))
+    (if (> now evchan-gptel-utils/gcloud-token-expires-at)
+        (progn
+          (with-temp-buffer
+            (when (/= 0 (call-process "gcloud" nil t nil "auth" "print-access-token"))
+              (funcall callback "Failed to call gcloud CLI"))
+            (setq evchan-gptel-utils/gcloud-token-expires-at
+                  (+ now 3000))
+            (setq evchan-gptel-utils/gcloud-access-token
+                  (string-trim (buffer-string))))
+          (funcall callback nil))
+      (funcall callback nil))))
+
+(defun evchan-gptel-utils/get-gcloud-token ()
+  "Return the access token for GCloud API."
+
+  (evchan-gptel-utils/gcloud-refresh-token
+   #'(lambda (err)
+       (if err
+           (error err)
+         evchan-gptel-utils/gcloud-access-token))))
+
 (add-to-list 'gptel-tools
              (gptel-make-tool
               :name "read_url"
