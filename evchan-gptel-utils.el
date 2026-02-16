@@ -305,7 +305,7 @@ After searching, pass them to CALLBACK in JSON format."
     (if (> now evchan-gptel-utils/gcloud-token-expires-at)
         (progn
           (with-temp-buffer
-            (when (/= 0 (call-process "gcloud" nil t nil "auth" "print-access-token"))
+            (when (/= 0 (call-process "gcloud" nil t nil "auth" "application-default" "print-access-token"))
               (funcall callback "Failed to call gcloud CLI"))
             (setq evchan-gptel-utils/gcloud-token-expires-at
                   (+ now 3000))
