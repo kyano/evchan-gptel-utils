@@ -30,6 +30,7 @@
 ;;; Code:
 
 (require 'gptel)
+(require 'gptel-gemini)
 
 (defconst evchan-gptel-utils/user-agent
   (format "Emacs/%s (%s) gptel"
@@ -322,6 +323,42 @@ After searching, pass them to CALLBACK in JSON format."
        (if err
            (error err)
          evchan-gptel-utils/gcloud-access-token))))
+
+(defun evchan-gptel-utils/gptel-gemini-for-vertexai (backend-name)
+  "Modify the Gemini backend BACKEND-NAME to work properly with Vertex AI.
+
+This modifies the value of the `:url' slot and adds an advice to
+`gptel--request-data'.  The advice adds two built-in tools
+`google_search' and `url_context' if no tools are provided."
+
+  (let* ((backend (alist-get backend-name
+                             gptel--known-backends
+                             nil nil
+                             #'string=))
+         (protocol (slot-value backend 'protocol))
+         (host (slot-value backend 'host))
+         (endpoint (slot-value backend 'endpoint))
+         (stream (slot-value backend 'stream)))
+    (setf (slot-value backend 'url)
+          #'(lambda ()
+              (concat protocol "://" host
+                      endpoint
+                      "/" (symbol-name gptel-model)
+                      ":" (if (and stream gptel-use-curl gptel-stream)
+                              "streamGenerateContent"
+                            "generateContent"))))
+    (advice-add #'gptel--request-data
+                :around
+                #'(lambda (fn backend prompts)
+                    (let ((request-data (funcall fn backend prompts)))
+                      (when (and (gptel-gemini-p backend)
+                                 gptel-use-tools
+                                 (not gptel-tools))
+                        (plist-put request-data
+                                   :tools
+                                   [(:google_search ())
+                                    (:url_context ())])
+                        request-data))))))
 
 (add-to-list 'gptel-tools
              (gptel-make-tool
