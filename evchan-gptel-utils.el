@@ -30,6 +30,7 @@
 ;;; Code:
 
 (require 'gptel)
+(require 'gptel-openai)
 (require 'gptel-gemini)
 
 (defconst evchan-gptel-utils/user-agent
@@ -346,19 +347,60 @@ This modifies the value of the `:url' slot and adds an advice to
                       "/" (symbol-name gptel-model)
                       ":" (if (and stream gptel-use-curl gptel-stream)
                               "streamGenerateContent"
-                            "generateContent"))))
-    (advice-add #'gptel--request-data
-                :around
-                #'(lambda (fn backend prompts)
-                    (let ((request-data (funcall fn backend prompts)))
-                      (when (and (gptel-gemini-p backend)
-                                 gptel-use-tools
-                                 (not gptel-tools))
+                            "generateContent")))))
+  (advice-add #'gptel--request-data
+              :around
+              #'(lambda (fn backend prompts)
+                  (let ((request-data (funcall fn backend prompts)))
+                    (when (and (gptel-gemini-p backend)
+                               (string= (slot-value backend 'name)
+                                        backend-name)
+                               gptel-use-tools
+                               (not gptel-tools))
+                      (plist-put request-data
+                                 :tools
+                                 [(:google_search ())
+                                  (:url_context ())]))
+                    request-data))))
+
+(defun evchan-gptel-utils/gptel-workaround-for-llamacpp (backend-name)
+  "Modify the OpenAI backend BACKEND-NAME to work properly with llama.cpp.
+
+This simply adds an advice to `gptel--request-data' as a workaround for
+some issues.
+
+1. `parallel_tool_calls' makes issues on some models.
+   (For example, NVIDIA-Nemotron-3-Nano)
+2. `stream_options' does nothing for llama.cpp.
+3. `max_tokens' is not supported but `n_predict' works."
+
+  (advice-add #'gptel--request-data
+              :around
+              #'(lambda (fn backend prompts)
+                  (let ((request-data (funcall fn backend prompts)))
+                    (when (and (gptel-openai-p backend)
+                               (string= (slot-value backend 'name)
+                                        backend-name))
+                      (when (plist-member request-data
+                                          :max_tokens)
                         (plist-put request-data
-                                   :tools
-                                   [(:google_search ())
-                                    (:url_context ())])
-                        request-data))))))
+                                   :n_predict
+                                   (plist-get request-data
+                                              :max_tokens))
+                        (setq request-data
+                              (map-delete request-data
+                                          :max_tokens)))
+                      (when (plist-member request-data
+                                          :parallel_tool_calls)
+                        (plist-put request-data
+                                   :parallel_tool_calls
+                                   :json-false))
+                      (when (plist-member request-data
+                                          :stream_options)
+                        (setq request-data
+                              (map-delete request-data
+                                          :stream_options))))
+                    request-data))))
 
 (add-to-list 'gptel-tools
              (gptel-make-tool
