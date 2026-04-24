@@ -369,10 +369,8 @@ This modifies the value of the `:url' slot and adds an advice to
 This simply adds an advice to `gptel--request-data' as a workaround for
 some issues.
 
-1. `parallel_tool_calls' makes issues on some models.
-   (For example, NVIDIA-Nemotron-3-Nano)
-2. `stream_options' does nothing for llama.cpp.
-3. `max_tokens' is not supported but `n_predict' works."
+1. `stream_options' does nothing for llama.cpp.
+2. `max_tokens' is not supported but `n_predict' works."
 
   (advice-add #'gptel--request-data
               :around
@@ -390,11 +388,6 @@ some issues.
                         (setq request-data
                               (map-delete request-data
                                           :max_tokens)))
-                      (when (plist-member request-data
-                                          :parallel_tool_calls)
-                        (plist-put request-data
-                                   :parallel_tool_calls
-                                   :json-false))
                       (when (plist-member request-data
                                           :stream_options)
                         (setq request-data
