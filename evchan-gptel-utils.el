@@ -341,7 +341,7 @@ This modifies the value of the `:url' slot and adds an advice to
          (endpoint (slot-value backend 'endpoint))
          (stream (slot-value backend 'stream)))
     (setf (slot-value backend 'url)
-          #'(lambda ()
+          #'(lambda (_)
               (concat protocol "://" host
                       endpoint
                       "/" (symbol-name gptel-model)
