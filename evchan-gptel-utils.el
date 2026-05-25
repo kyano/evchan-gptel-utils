@@ -211,12 +211,12 @@ A valid executable `python3' must be found in the directories set in
                  (if (plist-member status 'error)
                      (funcall callback (format "An error occurred: %s"
                                                (plist-get status 'error)))
-                   (let* ((response (json-read-from-string
+                   (let* ((response (json-parse-string
                                      (buffer-substring-no-properties (marker-position url-http-end-of-headers)
                                                                      (point-max))))
-                          (token-type (cdr (assoc 'token_type response)))
-                          (expires-in (cdr (assoc 'expires_in response)))
-                          (access-token (cdr (assoc 'access_token response))))
+                          (token-type (gethash "token_type" response))
+                          (expires-in (gethash "expires_in" response))
+                          (access-token (gethash "access_token" response)))
                      (setq evchan-gptel-utils/wikipedia-token-expires-at
                            (+ now (truncate (* expires-in 0.75))))
                      (setq evchan-gptel-utils/wikipedia-access-token
@@ -249,21 +249,21 @@ After searching, pass them to CALLBACK in JSON format."
                   (if (plist-member status 'error)
                       (funcall callback (format "An error occurred: %s"
                                                 (plist-get status 'error)))
-                    (let* ((response (json-read-from-string
+                    (let* ((response (json-parse-string
                                       (buffer-substring-no-properties (marker-position url-http-end-of-headers)
                                                                       (point-max))))
-                           (pages (cdr (assoc 'pages response)))
+                           (pages (gethash "pages" response))
                            page-list)
                       (setq page-list
                             (mapcar
                              (lambda (page)
-                               (let ((key (cdr (assoc 'key page)))
-                                     (title (cdr (assoc 'title page)))
-                                     (description (cdr (assoc 'description page))))
-                                 `(,title . ((title . ,key)
-                                             (description . ,description)))))
+                               (let ((key (gethash "key" page))
+                                     (title (gethash "title" page))
+                                     (description (gethash "description" page)))
+                                 `(,(intern title) . ((title . ,key)
+                                                      (description . ,description)))))
                              pages))
-                      (funcall callback (json-encode page-list))))) nil t nil)
+                      (funcall callback (json-serialize page-list))))) nil t nil)
              (t (funcall callback (format "An error occurred: %s"
                                           (error-message-string error))))))))))
 
@@ -286,13 +286,16 @@ After searching, pass them to CALLBACK in JSON format."
                   (if (plist-member status 'error)
                       (funcall callback (format "An error occurred: %s"
                                                 (plist-get status 'error)))
-                    (let* ((response (json-read-from-string
+                    (let* ((response (json-parse-string
                                       (buffer-substring-no-properties (marker-position url-http-end-of-headers)
                                                                       (point-max))))
-                           (wiki-source (cdr (assoc 'source response))))
-                      (funcall callback (json-encode
-                                         `((title . ,key)
-                                           (document . ,wiki-source)))))))
+                           (wiki-source (gethash "source" response)))
+                      (funcall callback
+                               (decode-coding-string
+                                (json-serialize
+                                 `((title . ,key)
+                                   (document . ,wiki-source)))
+                                'utf-8)))))
                 nil t nil)
              (t (funcall callback (format "An error occurred: %s"
                                           (error-message-string error))))))))))
