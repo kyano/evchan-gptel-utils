@@ -470,6 +470,7 @@ some issues.
               :name "fetch_wikipedia"
               :function #'evchan-gptel-utils/fetch-wikipedia
               :async t
+              :include nil
               :description
               (concat "Fetch a Wikipedia document with the `title`, in MediaWiki format."
                       " To get the title of an article, use `search_wikipedia`.")
