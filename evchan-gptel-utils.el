@@ -263,7 +263,11 @@ After searching, pass them to CALLBACK in JSON format."
                                  `(,(intern title) . ((title . ,key)
                                                       (description . ,description)))))
                              pages))
-                      (funcall callback (json-serialize page-list))))) nil t nil)
+                      (funcall callback
+                               (decode-coding-string
+                                (json-serialize page-list)
+                                'utf-8)))))
+                nil t nil)
              (t (funcall callback (format "An error occurred: %s"
                                           (error-message-string error))))))))))
 
