@@ -376,8 +376,7 @@ This modifies the value of the `:url' slot and adds an advice to
 This simply adds an advice to `gptel--request-data' as a workaround for
 some issues.
 
-1. `stream_options' does nothing for llama.cpp.
-2. `max_tokens' is not supported but `n_predict' works."
+1. `max_tokens' is not supported but `n_predict' works."
 
   (advice-add #'gptel--request-data
               :around
@@ -394,12 +393,7 @@ some issues.
                                               :max_tokens))
                         (setq request-data
                               (map-delete request-data
-                                          :max_tokens)))
-                      (when (plist-member request-data
-                                          :stream_options)
-                        (setq request-data
-                              (map-delete request-data
-                                          :stream_options))))
+                                          :max_tokens))))
                     request-data))))
 
 (add-to-list 'gptel-tools
